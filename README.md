@@ -1,10 +1,8 @@
 # ACT Topology Generation
 
 This role generates ACT connections for already deployed devices.
-Use a group name to setup a list of devices which will have ACT connecitons to them.
+The default groups for connecting is the WAN group
 
-
-inventory-act.yml
 ```yaml
 
     ACT_CUSTOM_CONNECTIONS:
@@ -20,11 +18,9 @@ inventory-act.yml
     - Chnage ansible_user: to match user/pass
     - On cli run to match the user's password:
       ```bash
-      LABPASSPHRASE=mybadpassword
+      LABPASSPHRASE=arista123abc!
       ```
-  - The script expects there to be a ~/.ssh/id_rsa.pub or ~/.ssh/id_ecdsa.pub
-  - VPN access to ACT 
-
+  - 
 
 ## Example Playbook
 
@@ -54,8 +50,8 @@ Use the WAN group , modify the input variables to the role to make the topology 
 
 ```yaml
 ---
-# defaults file for act-connections
-#
+# defaults file for act-topgen
+
 # Input/Output directories
 wan_folder: "{{ inventory_dir }}/act/custom-connections"
 output_folder: "{{ wan_folder }}/output_configs"
@@ -73,4 +69,26 @@ act_gre_start_key: "60000"
 
 ```
 
-Props to act-topgen https://github.com/emilarista/act_topgen
+## Example playbook run
+
+```bash
+# Build config for a group called WAN
+ansible-playbook /playbooks/act-connections.yml -i "wan/merged_inventory.yml" \
+-e "target_hosts=WAN" \
+-e "act_build=true"
+# The script will create a directory called "act/custom-connections"
+# if the act/custom-connections/connecitons.yaml file is not there it will create a demo one commented out
+
+# Deploy config for a group called WAN
+ansible-playbook /playbooks/act-connections.yml -i "wan/merged_inventory.yml" \
+-e "target_hosts=WAN" \
+-e "act_deploy=true" \
+-e "act_gre_start_key=\"70000\"" # start gre key tunnel at 70000 and increment
+
+# Ping all devices in group called WAN
+ansible-playbook /playbooks/act-connections.yml -i "wan/merged_inventory.yml" \
+-e "target_hosts=WAN" \
+-e "act_deploy=true" \
+--tags ping
+
+```

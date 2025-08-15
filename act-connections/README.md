@@ -52,16 +52,19 @@ Use the WAN group , modify the input variables to the role to make the topology 
 ---
 # defaults file for act-topgen
 
-# Input/Output directories and AVD structured config file format
-wan_folder: "{{ inventory_dir }}"
+# Input/Output directories
+wan_folder: "{{ inventory_dir }}/act/custom-connections"
 output_folder: "{{ wan_folder }}/output_configs"
+act_connection_file: "{{wan_folder}}/connections.yml"
+#
 # Default settings to build
 act_build: false
 act_deploy: false
-
+#
 # Device (veos/generic) service user name uses ansible password for the local account.
 # and user's ssh rsa for conneciton
 act_service_user: service_act
+act_gre_start_key: "60000"
 
 
 ```
@@ -73,8 +76,8 @@ act_service_user: service_act
 ansible-playbook /playbooks/act-connections.yml -i "wan/merged_inventory.yml" \
 -e "target_hosts=WAN" \
 -e "act_build=true"
-# The script will create a directory called "act/custom-creations"
-# if the act/custom-creations/connecitons.yaml file is not thereit will create a demo one commented out
+# The script will create a directory called "act/custom-connections"
+# if the act/custom-connections/connecitons.yaml file is not there it will create a demo one commented out
 
 # Deploy config for a group called WAN
 ansible-playbook /playbooks/act-connections.yml -i "wan/merged_inventory.yml" \
