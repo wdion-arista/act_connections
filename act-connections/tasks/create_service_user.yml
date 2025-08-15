@@ -15,7 +15,6 @@
     local_rsa_pub_file: "{{ lookup('env', 'HOME') + '/.ssh/id_ecdsa.pub' }}"
   when: local_rsa_pub_check.stat.exists
 
-
 - name: Debug - Show ecdrsa file
   tags: 
     - service_user
@@ -30,15 +29,13 @@
     path: "{{ lookup('env', 'HOME') + '/.ssh/id_rsa.pub' }}"
   register: local_rsa_pub_check2
   delegate_to: localhost
-  when: not local_rsa_pub_check.stat.exists and local_rsa_pub_file is not defined
 
 - name: Set id_rsa.pub file for connection
   tags: 
     - service_user
   ansible.builtin.set_fact:
     local_rsa_pub_file: "{{ lookup('env', 'HOME') + '/.ssh/id_rsa.pub' }}"
-  when: local_rsa_pub_check2.stat.exists
-
+  when: local_rsa_pub_file is not defined and local_rsa_pub_check2.stat.exists
 
 - name: Debug - Show rsa file
   tags: 
