@@ -1,0 +1,60 @@
+---
+# Setup Environments
+
+- name: Create required directories if not present config
+  tags:
+    - always
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0775"
+  loop:
+    - "{{ wan_folder }}"
+    - "{{ output_folder }}"
+  delegate_to: localhost
+  run_once: true
+
+# check var true false to fix from cli command
+
+- name: Set a build_config on true
+  tags:
+    - always
+  ansible.builtin.set_fact:
+    build_config: true
+  run_once: true
+  delegate_to: localhost
+  when: act_build == "true"
+
+- name: Set a build_config on false
+  tags:
+    - always
+  ansible.builtin.set_fact:
+    build_config: false
+  run_once: true
+  delegate_to: localhost
+  when: act_build != "true"
+
+- name: Set a deploy_config on true
+  tags:
+    - always
+  ansible.builtin.set_fact:
+    deploy_config: true
+  run_once: true
+  delegate_to: localhost
+  when: act_deploy == "true"
+
+- name: Set a deploy_config on false
+  tags:
+    - always
+  ansible.builtin.set_fact:
+    deploy_config: false
+  run_once: true
+  delegate_to: localhost
+  when: act_deploy != "true"
+
+- name: Debug - Show the links
+  tags:
+    - always
+  ansible.builtin.debug:
+    msg: "Build config: {{ build_config }} \nDeploy config: {{ deploy_config }}"
+  when: ansible_verbosity >= 1

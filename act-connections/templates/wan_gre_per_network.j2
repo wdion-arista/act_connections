@@ -1,0 +1,27 @@
+#
+# This file contains the GRE tunnel configurations for {{ current_host }}.
+#
+{% for link in wan_links_with_keys %}
+{% if current_host in link.connection[0] %}
+{% set local_host_info = link.connection[0].split(':') %}
+{% set remote_host_info = link.connection[1].split(':') %}
+{% set local_ip_address = hostvars[local_host_info[0]].ansible_host %}
+{% set remote_ip_address = hostvars[remote_host_info[0]].ansible_host %}
+{% set local_interface_full = local_host_info[1] %}
+{% set local_interface_number = local_interface_full | regex_search('\\d+') %}
+# {{ link.connection[0] }} - {{ link.connection[1] }}
+ip netns exec ACT-Cloud /sbin/ip link delete name vmnicet{{ local_interface_number }}
+ip netns exec ACT-Cloud /sbin/ip link add name vmnicet{{ local_interface_number }} type gretap local {{ local_ip_address }} remote {{ remote_ip_address }} key {{ link.key }}
+{% elif current_host in link.connection[1] %}
+{% set local_host_info = link.connection[1].split(':') %}
+{% set remote_host_info = link.connection[0].split(':') %}
+{% set local_ip_address = hostvars[local_host_info[0]].ansible_host %}
+{% set remote_ip_address = hostvars[remote_host_info[0]].ansible_host %}
+{% set local_interface_full = local_host_info[1] %}
+{% set local_interface_number = local_interface_full | regex_search('\\d+') %}
+# {{ link.connection[1] }} - {{ link.connection[0] }}
+ip netns exec ACT-Cloud /sbin/ip link delete name vmnicet{{ local_interface_number }}
+ip netns exec ACT-Cloud /sbin/ip link add name vmnicet{{ local_interface_number }} type gretap local {{ local_ip_address }} remote {{ remote_ip_address }} key {{ link.key }}
+{% endif %}
+{% endfor %}
+# sudo nohup service EosStage3 restart

@@ -1,0 +1,102 @@
+# Deploy configs to Devices
+
+- name: Check if the local network config file exists
+  tags:
+    - deploy
+  ansible.builtin.stat:
+    path: "{{ output_folder }}/{{ inventory_hostname }}-network.cfg"
+  register: local_network_config
+  delegate_to: localhost
+
+- name: Get content from local file network
+  tags:
+    - deploy
+  vars:
+    ansible_become: true
+  ansible.builtin.blockinfile:
+    path: /mnt/flash/act-network-create
+    block: "{{ lookup('file', output_folder + '/' + inventory_hostname + '-network.cfg') }}"
+    marker: "# {mark} ANSIBLE MANAGED INTERFACES BLOCK {{ target_hosts }}"
+  register: network_block_result
+  when: local_network_config.stat.exists
+
+- name: Check if the local namespace config file exists
+  tags:
+    - deploy
+  ansible.builtin.stat:
+    path: "{{ output_folder }}/{{ inventory_hostname }}-namespace.cfg"
+  register: local_namespace_config
+  delegate_to: localhost
+
+- name: Get content from namespace
+  tags:
+    - deploy
+  vars:
+    ansible_become: true
+  ansible.builtin.blockinfile:
+    path: /mnt/flash/act-namespace
+    block: "{{ lookup('file', output_folder + '/' + inventory_hostname + '-namespace.cfg') }}"
+    marker: "# {mark} ANSIBLE MANAGED INTERFACES BLOCK {{ target_hosts }}"
+    insertbefore: '^ip link set ma1 up$'
+  register: namespace_block_result
+  when: local_namespace_config.stat.exists
+
+# - name: Get content from local file network temp
+#  tags:
+#    - deploy
+#   vars:
+#     ansible_become: true
+#   ansible.builtin.blockinfile:
+#     path: /mnt/flash/act-network-create
+#     block: ""
+#     marker: "# {mark} ANSIBLE MANAGED INTERFACES BLOCK"
+#   register: network_block_result
+
+# - name: Get content from namespace temp
+#  tags:
+#    - deploy
+#   vars:
+#     ansible_become: true
+#   ansible.builtin.blockinfile:
+#     path: /mnt/flash/act-namespace
+#     block: ""
+#     marker: "# {mark} ANSIBLE MANAGED INTERFACES BLOCK"
+#     insertbefore: '^ip link set ma1 up$'
+#   register: namespace_block_result
+  
+
+- name: Execute commands from the config file
+  tags:
+    - deploy
+  ansible.builtin.shell:
+    cmd: |
+      rm -f /bin/act-namespace
+      rm -f /bin/act-network-create
+  become: true
+  register: command_output
+  when: (network_block_result is defined and network_block_result.changed ) or ( namespace_block_result is defined and namespace_block_result.changed )
+
+- name: Display command output (optional)
+  tags:
+    - deploy
+  ansible.builtin.debug:
+    msg: "Command for {{ inventory_hostname }} | Output: {{ command_output.stdout }}"
+  when: network_block_result.changed or namespace_block_result.changed
+
+- name: Trigger a reboot and immediately disconnect
+  tags:
+    - deploy
+  ansible.builtin.shell: shutdown -r +1 "Reboot triggered by Ansible"
+  async: 1
+  poll: 0
+  when: (network_block_result is defined and network_block_result.changed ) or ( namespace_block_result is defined and namespace_block_result.changed )
+
+- name: Wait for the host to come back online
+  tags:
+    - deploy
+  ansible.builtin.wait_for_connection:
+    connect_timeout: 60
+    sleep: 5
+    delay: 5
+    timeout: 800
+  when: (network_block_result is defined and network_block_result.changed ) or ( namespace_block_result is defined and namespace_block_result.changed )

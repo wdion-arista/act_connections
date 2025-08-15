@@ -1,0 +1,4 @@
+---
+# vars file for act-connections
+build_config: false
+deploy_config: false

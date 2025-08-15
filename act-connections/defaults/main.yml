@@ -1,0 +1,16 @@
+---
+# defaults file for act-connections
+#
+# Input/Output directories
+wan_folder: "{{ inventory_dir }}/act/custom-connections"
+output_folder: "{{ wan_folder }}/output_configs"
+act_connection_file: "{{wan_folder}}/connections.yml"
+#
+# Default settings to build
+act_build: false
+act_deploy: false
+#
+# Device (veos/generic) service user name uses ansible password for the local account.
+# and user's ssh rsa for conneciton
+act_service_user: service_act
+act_gre_start_key: "60000"

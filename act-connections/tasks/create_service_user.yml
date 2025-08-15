@@ -1,0 +1,92 @@
+# Create the Service user
+
+- name: Check if the local id_ecdsa.pub config file exists
+  tags: 
+    - service_user
+  ansible.builtin.stat:
+    path: "{{ lookup('env', 'HOME') + '/.ssh/id_ecdsa.pub' }}"
+  register: local_rsa_pub_check
+  delegate_to: localhost
+
+- name: Set id_ecdsa.pub file for connection
+  tags: 
+    - service_user
+  ansible.builtin.set_fact:
+    local_rsa_pub_file: "{{ lookup('env', 'HOME') + '/.ssh/id_ecdsa.pub' }}"
+  when: local_rsa_pub_check.stat.exists
+
+
+- name: Debug - Show ecdrsa file
+  tags: 
+    - service_user
+  ansible.builtin.debug:
+    msg: "{{ local_rsa_pub_check | to_nice_yaml }}"
+  when: ansible_verbosity >= 1
+
+- name: Check if the local id_ecdsa.pub config file exists if not use id_rsa.pub
+  tags: 
+    - service_user
+  ansible.builtin.stat:
+    path: "{{ lookup('env', 'HOME') + '/.ssh/id_rsa.pub' }}"
+  register: local_rsa_pub_check2
+  delegate_to: localhost
+  when: not local_rsa_pub_check.stat.exists and local_rsa_pub_file is not defined
+
+- name: Set id_rsa.pub file for connection
+  tags: 
+    - service_user
+  ansible.builtin.set_fact:
+    local_rsa_pub_file: "{{ lookup('env', 'HOME') + '/.ssh/id_rsa.pub' }}"
+  when: local_rsa_pub_check2.stat.exists
+
+
+- name: Debug - Show rsa file
+  tags: 
+    - service_user
+  ansible.builtin.debug:
+    msg: "{{ local_rsa_pub_check2 | to_nice_yaml }}"
+  when: ansible_verbosity >= 1
+
+- name: Create Service user
+  tags: 
+    - service_user
+  ansible.builtin.uri:
+    url: "https://{{ ansible_user }}:{{ ansible_password }}@{{ hostvars[inventory_hostname].ansible_host }}/command-api"
+    method: POST
+    headers:
+      Accept: "application/json"
+    validate_certs: false
+    return_content: true
+    force_basic_auth: true
+    body:
+      jsonrpc: "2.0"
+      method: "runCmds"
+      params:
+        version: 1
+        cmds:
+          - "enable"
+          - "configure"
+          - "username {{ act_service_user }} shell /bin/bash secret sha512 {{ ansible_password | password_hash('sha512', salt='arista', rounds=5000) }}"
+          - "username {{ act_service_user }} ssh-key {{ lookup('ansible.builtin.file', local_rsa_pub_file) }}"
+          - "write"
+        format: json
+        timestamps: false
+        autoComplete: false
+        expandAliases: false
+        stopOnError: false
+        streaming: false
+        includeErrorDetail: false
+      id: EapiExplorer-1
+    body_format: json
+  register: eapi_run_cmd
+  until: eapi_run_cmd.status == 200
+  retries: 10
+  delay: 2
+  when: not network_ping_result.failed
+
+- name: Debug - Show the eapi Return
+  tags: 
+    - service_user
+  ansible.builtin.debug:
+    msg: "{{ eapi_run_cmd | to_nice_yaml }}"
+  when: ansible_verbosity >= 1

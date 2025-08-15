@@ -1,0 +1,47 @@
+---
+# This file should contain a list of tasks, not a single task with an embedded `tasks:` block.
+# Any variables defined at the top level should be moved to a separate `vars` file or the playbook itself.
+
+- name: Setup ENV and files
+  tags:
+    - always
+  ansible.builtin.include_tasks: setup.yml
+
+- name: Build configs for devices
+  tags: 
+    - build
+  ansible.builtin.include_tasks: build.yml
+  when: build_config
+
+- name: Ping Devices from localhost
+  tags: 
+    - ping
+  ansible.builtin.include_tasks: ping.yml
+  when: deploy_config
+
+- name: Create Service user on Devices
+  tags: 
+    - service_user
+  ansible.builtin.include_tasks: create_service_user.yml
+  vars:
+    # ansible_become: true
+    # ansible_become_method: enable
+    # HTTPAPI configuration
+    ansible_connection: httpapi
+    ansible_httpapi_port: 443
+    ansible_httpapi_use_ssl: true
+    ansible_httpapi_validate_certs: false
+    ansible_python_interpreter: $(which python3)
+    avd_data_validation_mode: error
+  when: deploy_config and network_ping_result is not failed and network_ping_result is not unreachable and not network_ping_result_host.failed
+
+- name: Deploy Act connection configs to Devices
+  tags: 
+    - deploy
+  ansible.builtin.include_tasks: deploy.yml
+  vars:
+    ansible_user: "{{ act_service_user }}"
+    ansible_password: "{{ lookup('env', 'LABPASSPHRASE') | default('arista') }}"
+    ansible_python_interpreter: /usr/bin/python3
+    ansible_become: true
+  when: deploy_config and network_ping_result is not failed and network_ping_result is not unreachable

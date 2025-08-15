@@ -1,0 +1,81 @@
+---
+# Ping
+
+- name: Run ping checks and register results
+  tags: 
+    - ping
+  block:
+    - name: Check network connectivity via ICMP
+      tags: 
+        - ping
+      ansible.builtin.shell: ping -c 2 {{ ansible_host }}
+      delegate_to: localhost
+      changed_when: false
+      ignore_errors: true
+      register: network_ping_result
+
+    - name: Check network connectivity to internet from switch
+      tags: 
+        - ping
+      vars:
+        ansible_network_os: arista.eos.eos
+        ansible_become: true
+        ansible_become_method: enable
+        ansible_connection: network_cli        
+      arista.eos.eos_command:
+        commands: 
+          - show version
+          - ping 8.8.8.8
+        wait_for:
+          - result[0] contains Arista
+          - result[1] contains '5 received'
+      changed_when: false
+      ignore_errors: true
+      register: network_ping_result_host
+      when: network_ping_result.rc == 0
+
+- name: Display results for Ansible connectivity check ICMP
+  tags: 
+    - ping
+  ansible.builtin.debug:
+    msg: "Ansible connectivity to {{ inventory_hostname }} was successful. ✅"
+  when: network_ping_result is not failed and network_ping_result is not unreachable
+
+
+- name: Display results for Ansible connectivity check
+  tags: 
+    - ping
+  ansible.builtin.debug:
+    msg: "Ansible connectivity to {{ inventory_hostname }} was successful. ✅"
+  when: network_ping_result is not failed and network_ping_result is not unreachable and not network_ping_result_host.failed
+
+- name: DEBUG - Display results for Ansible connectivity check
+  tags: 
+    - ping
+  ansible.builtin.debug:
+    msg: "Ansible connectivity to {{ inventory_hostname }} was successful. ✅ \n{{ network_ping_result_host | to_nice_yaml }}"
+  when: ansible_verbosity >= 1 and network_ping_result is not failed and network_ping_result is not unreachable and not network_ping_result_host.failed
+
+
+- name: Display results for Device Pingable but Internet Check Failed
+  tags: 
+    - ping
+  ansible.builtin.debug:
+    msg: "Ansible connectivity to {{ inventory_hostname }} was not able to reach the internet. ❌ \n{{ network_ping_result_host | to_nice_yaml }}"
+  when: network_ping_result is not failed and network_ping_result is not unreachable and network_ping_result_host.failed
+
+
+- name: Display failure message for Ansible connectivity
+  tags: 
+    - ping
+  ansible.builtin.debug:
+    msg: "Ansible connectivity to {{ inventory_hostname }} failed. ❌"
+  when: network_ping_result is failed or network_ping_result is unreachable
+  
+- name: Fail the play if Device not pingable
+  tags: 
+    - ping
+  ansible.builtin.fail:
+    msg: "Device not pingable {{ inventory_hostname }} '{{ network_ping_result.stdout }}'. Aborting."
+  when: network_ping_result.rc != 0
+

@@ -1,0 +1,187 @@
+---
+# Build ACT connecitons config
+
+- name: Check if the local connecitons.yml config file exists
+  tags: 
+    - build
+  ansible.builtin.stat:
+    path: "{{ act_connection_file }}"
+  register: local_act_connections_config
+  delegate_to: localhost
+
+- name: Create Demo file connecitons.yml if it doesn't exist
+  tags: 
+    - build
+  ansible.builtin.copy:
+    content: |
+      ---
+      # links: 
+        # Spine1-Leaf1-2
+        # - connection:
+        #   - s1-spine1:Ethernet31
+        #   - s1-leaf1:Ethernet31
+        # - connection:
+        #   - s1-spine1:Ethernet32
+        #   - s1-leaf2:Ethernet31
+    dest: "{{ act_connection_file }}"
+    mode: '0644'
+  delegate_to: localhost
+  when: not local_act_connections_config.stat.exists
+
+- name: Load the WAN link definitions
+  tags: 
+    - build
+  ansible.builtin.include_vars:
+    file: "{{ act_connection_file }}"
+    name: wan
+
+- name: Debug - Show the loaded ALL WAN links
+  tags: 
+    - build
+  ansible.builtin.debug:
+    msg: "{{ wan | d({}) | to_nice_yaml }}"
+  when: ansible_verbosity >= 1
+
+- name: set links
+  tags: 
+    - build
+  ansible.builtin.set_fact:
+    wan_links: "{{ wan.links }}"
+    links_count: "{{ wan.links | length | int }}"
+  when: wan.links is defined and wan.links is not none and ((wan.links | d([])) | length > 0)
+
+- name: set links if null to empty list
+  tags: 
+    - build
+  ansible.builtin.set_fact:
+    wan_links: []
+    links_count: 0
+  when: wan.links is not defined or wan.links is none or ((wan.links | d([])) | length == 0)
+
+- name: Debug - Show the links
+  tags: 
+    - build
+  ansible.builtin.debug:
+    msg: "{{ wan_links | to_nice_yaml }} \n {{ links_count }}"
+  when: ansible_verbosity >= 1
+
+- name: Add a unique, incremental key to each WAN link
+  tags: 
+    - build
+  ansible.builtin.set_fact:
+    wan_with_keys: "{{ wan_with_keys | d([]) + [item | combine({'key': (start_key | int + my_index | int) | string })] }}"
+  loop: "{{ wan_links }}"
+  run_once: true
+  loop_control:
+    index_var: my_index
+  vars:
+    start_key: "{{ act_gre_start_key }}"
+  when: wan_links | length > 0
+  
+- name: Set a wan_with_keys to empty
+  tags: 
+    - build
+  ansible.builtin.set_fact:
+    wan_with_keys: []
+  run_once: true
+  delegate_to: localhost
+  when: wan_links | length == 0
+
+- name: Set a fact to check if the loop is empty
+  tags: 
+    - build
+  ansible.builtin.set_fact:
+    unique_hosts: "{{ wan_with_keys | map(attribute='connection') | flatten | map('split', ':') | map(attribute=0) | unique | list }}"
+  run_once: true
+  delegate_to: localhost
+
+- name: Set inlist_value to 1 if the host is in the unique_hosts list
+  tags: 
+    - build
+  ansible.builtin.set_fact:
+    inlist_value: 1
+  when: inventory_hostname in unique_hosts
+
+- name: Set inlist_value to 0 if the host is not in the unique_hosts list
+  tags: 
+    - build
+  ansible.builtin.set_fact:
+    inlist_value: 0
+  when: inventory_hostname not in unique_hosts
+
+- name: Debug - Show the loaded ALL wan_with_keys unique links
+  tags: 
+    - build
+  ansible.builtin.debug:
+    msg: "{{ unique_hosts | to_nice_yaml }} in value: {{ inlist_value }}"
+  when: ansible_verbosity >= 1 and wan_with_keys is defined
+
+- name: Debug - Show the loaded ALL wan_with_keys links
+  tags: 
+    - build
+  ansible.builtin.debug:
+    msg: "{{ wan_with_keys | to_nice_yaml }}"
+  when: ansible_verbosity >= 1 and wan_with_keys is defined
+
+- name: Generate a configuration file for each unique host network
+  tags: 
+    - build
+  ansible.builtin.template:
+    src: wan_gre_per_network.j2
+    dest: "{{ output_folder }}/{{ item }}-network.cfg"
+    mode: "0664"
+  loop: "{{ wan_with_keys | map(attribute='connection') | flatten | map('split', ':') | map(attribute=0) | unique | list }}"
+  delegate_to: localhost
+  connection: local
+  run_once: true
+  loop_control:
+    label: "Generating config for {{ item }}"
+  vars:
+    wan_links_with_keys: "{{ wan_with_keys }}"
+    current_host: "{{ item }}"
+  when: inlist_value == 1
+
+- name: Remove the config if no settings network
+  tags: 
+    - build
+  ansible.builtin.file:
+    path: "{{ output_folder }}/{{ inventory_hostname }}-network.cfg"
+    state: absent
+  delegate_to: localhost
+  connection: local
+  when: inlist_value == 0
+
+- name: Generate a configuration file for each unique host namespace
+  tags: 
+    - build
+  ansible.builtin.template:
+    src: wan_gre_per_namespace.j2
+    dest: "{{ output_folder }}/{{ item }}-namespace.cfg"
+    mode: "0664"
+  loop: "{{ wan_with_keys | map(attribute='connection') | flatten | map('split', ':') | map(attribute=0) | unique | list }}"
+  delegate_to: localhost
+  connection: local
+  run_once: true
+  loop_control:
+    label: "Generating config for {{ item }}"
+  vars:
+    wan_links_with_keys: "{{ wan_with_keys }}"
+    current_host: "{{ item }}"
+  when: inlist_value == 1
+
+- name: Remove the config if no settings namespace
+  tags: 
+    - build
+  ansible.builtin.file:
+    path: "{{ output_folder }}/{{ inventory_hostname }}-namespace.cfg"
+    state: absent
+  delegate_to: localhost
+  connection: local
+  when: inlist_value == 0
+
+- name: Debug - Show the loaded ALL wan_with_keys links
+  tags: 
+    - build
+  ansible.builtin.debug:
+    msg: "{{ wan_with_keys | map(attribute='connection') | flatten | map('split', ':') | map(attribute=0) | unique | list | to_nice_yaml }}"
+  when: ansible_verbosity >= 1 and wan_with_keys is defined

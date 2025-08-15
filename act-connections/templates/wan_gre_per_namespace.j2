@@ -1,0 +1,26 @@
+#
+# This file contains the GRE tunnel configurations for {{ current_host }}.
+#
+{% for link in wan_links_with_keys %}
+{% if current_host in link.connection[0] %}
+{% set local_host_info = link.connection[0].split(':') %}
+{% set remote_host_info = link.connection[1].split(':') %}
+{% set local_ip_address = hostvars[local_host_info[0]].ansible_host %}
+{% set remote_ip_address = hostvars[remote_host_info[0]].ansible_host %}
+{% set local_interface_full = local_host_info[1] %}
+{% set local_interface_number = local_interface_full | regex_search('\\d+') %}
+# {{ link.connection[0] }} - {{ link.connection[1] }}
+ip link delete vmnicet{{ local_interface_number }}
+ip netns exec ACT-Cloud /sbin/ip link set vmnicet{{ local_interface_number }} netns default
+{% elif current_host in link.connection[1] %}
+{% set local_host_info = link.connection[1].split(':') %}
+{% set remote_host_info = link.connection[0].split(':') %}
+{% set local_ip_address = hostvars[local_host_info[0]].ansible_host %}
+{% set remote_ip_address = hostvars[remote_host_info[0]].ansible_host %}
+{% set local_interface_full = local_host_info[1] %}
+{% set local_interface_number = local_interface_full | regex_search('\\d+') %}
+# {{ link.connection[1] }} - {{ link.connection[0] }}
+ip link delete vmnicet{{ local_interface_number }}
+ip netns exec ACT-Cloud /sbin/ip link set vmnicet{{ local_interface_number }} netns default
+{% endif %}
+{% endfor %}
