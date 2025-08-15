@@ -1,8 +1,10 @@
 # ACT Topology Generation
 
 This role generates ACT connections for already deployed devices.
-The default groups for connecting is the WAN group
+Use a group name to setup a list of devices which will have ACT connecitons to them.
 
+
+inventory-act.yml
 ```yaml
 
     ACT_CUSTOM_CONNECTIONS:
@@ -18,9 +20,11 @@ The default groups for connecting is the WAN group
     - Chnage ansible_user: to match user/pass
     - On cli run to match the user's password:
       ```bash
-      LABPASSPHRASE=arista123abc!
+      LABPASSPHRASE=mybadpassword
       ```
-  - 
+  - The script expects there to be a ~/.ssh/id_rsa.pub or ~/.ssh/id_ecdsa.pub
+  - VPN access to ACT 
+
 
 ## Example Playbook
 
@@ -68,3 +72,5 @@ act_gre_start_key: "60000"
 
 
 ```
+
+Props to act-topgen https://github.com/emilarista/act_topgen
