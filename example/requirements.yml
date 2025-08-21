@@ -1,0 +1,11 @@
+---
+roles:
+  - name: act-connections
+    src: https://github.com/wdion-arista/act_connections.git
+    scm: git
+    version: v1.0.2
+    #version: main    
+collections:
+  - name: community.general
+  - name: community.docker
+  - name: ansible.posix

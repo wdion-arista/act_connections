@@ -69,6 +69,12 @@ act_gre_start_key: "60000"
 
 ```
 
+## Install
+
+```bash
+ansible-galaxy install -g -f -r example/requirements.yml
+```
+
 ## Example playbook run
 
 ```bash
@@ -91,4 +97,123 @@ ansible-playbook /playbooks/act-connections.yml -i "wan/merged_inventory.yml" \
 -e "act_deploy=true" \
 --tags ping
 
+```
+
+## Connections file
+
+If you do not have the file in *act/custom-connecitons/connecitons.yml* the script will make it for you.
+Your inventory group above needs to have login admin access
+
+example connecitons: 
+```yaml
+---
+links: 
+  Spine1-Leaf1-2
+  - connection:
+    - s1-spine1:Ethernet31
+    - s1-leaf1:Ethernet31
+  - connection:
+    - s1-spine1:Ethernet32
+    - s1-leaf2:Ethernet31
+```
+## Full invenotry file:
+```yaml
+all:
+  children:
+    ACT:
+      children:
+        HQ_FABRIC:
+          children:
+            HQ_SPINES:
+              hosts:
+                hq-spine1:
+                  ansible_host: 10.0.0.210
+                  cloud_ip: 192.168.0.10
+                hq-spine2:
+                  ansible_host: 10.0.0.170
+                  cloud_ip: 192.168.0.11
+        SITE1_FABRIC:
+          children:
+            SITE1_LEAFS:
+              hosts:
+                s1-leaf1:
+                  ansible_host: 10.0.0.53
+                  cloud_ip: 192.168.1.20
+                s1-leaf2:
+                  ansible_host: 10.0.0.211
+                  cloud_ip: 192.168.1.21
+                s1-leaf3:
+                  ansible_host: 10.0.0.57
+                  cloud_ip: 192.168.1.22
+                s1-leaf4:
+                  ansible_host: 10.0.0.218
+                  cloud_ip: 192.168.1.23
+            SITE1_SPINES:
+              hosts:
+                s1-spine1:
+                  ansible_host: 10.0.0.54
+                  cloud_ip: 192.168.1.10
+                s1-spine2:
+                  ansible_host: 10.18.132.176
+                  cloud_ip: 192.168.1.11
+        SITE2_FABRIC:
+          children:
+            SITE2_LEAFS:
+              hosts:
+                s2-leaf1:
+                  ansible_host: 10.18.142.48
+                  cloud_ip: 192.168.2.20
+                s2-leaf2:
+                  ansible_host: 10.18.142.18
+                  cloud_ip: 192.168.2.21
+                s2-leaf3:
+                  ansible_host: 10.18.142.9
+                  cloud_ip: 192.168.2.22
+                s2-leaf4:
+                  ansible_host: 10.18.142.145
+                  cloud_ip: 192.168.2.23
+            SITE2_SPINES:
+              hosts:
+                s2-spine1:
+                  ansible_host: 10.18.142.2
+                  cloud_ip: 192.168.2.10
+                s2-spine2:
+                  ansible_host: 10.18.142.5
+                  cloud_ip: 192.168.2.11
+    CVP:
+      hosts:
+        cvp: null
+    HQ_FABRIC_PORTS:
+      children:
+        HQ_SPINES: null
+    HQ_FABRIC_SERVICES:
+      children:
+        HQ_SPINES: null
+    SITE1_FABRIC_PORTS:
+      children:
+        SITE1_LEAFS: null
+        SITE1_SPINES: null
+    SITE1_FABRIC_SERVICES:
+      children:
+        SITE1_LEAFS: null
+        SITE1_SPINES: null
+    SITE2_FABRIC_PORTS:
+      children:
+        SITE2_LEAFS: null
+        SITE2_SPINES: null
+    SITE2_FABRIC_SERVICES:
+      children:
+        SITE2_LEAFS: null
+        SITE2_SPINES: null
+    TOOLS:
+      children:
+        TOOLSSERVER:
+          hosts:
+            tools-server:
+              ansible_host: 10.0.0.209
+    WAN:
+      children:
+        HQ_SPINES: null
+        SITE1_SPINES: null
+        SITE2_SPINES: null
 ```
