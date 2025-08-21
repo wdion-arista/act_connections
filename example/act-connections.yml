@@ -1,0 +1,17 @@
+---
+- name: Build ACT / Connections
+  hosts: "{{ target_hosts | default('ACT_CUSTOM_CONNECTIONS') }}"
+  gather_facts: false
+  # ignore_unreachable: true
+
+  tasks:
+
+    - name: Generate ACT / Connections
+      vars:
+        ansible_user: cvpadmin
+        ansible_password: "{{ lookup('env', 'LABPASSPHRASE') }}"
+
+      ansible.builtin.import_role:
+        # For testing act-connections
+        # name: act_connections/act-connections
+        name: act-connections
