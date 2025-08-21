@@ -1,7 +1,7 @@
-# ACT Topology Generation
+# ACT Topology Custom Connection Generation
 
 This role generates ACT connections for already deployed devices.
-The default groups for connecting is the WAN group
+The default group for connecting is the ACT_CUSTOM_CONNECTIONS group
 
 ```yaml
 
@@ -217,3 +217,6 @@ all:
         SITE1_SPINES: null
         SITE2_SPINES: null
 ```
+
+## Working on
+- connections to linux hosts
