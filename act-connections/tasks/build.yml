@@ -123,6 +123,12 @@
     msg: "{{ wan_with_keys | to_nice_yaml }}"
   when: ansible_verbosity >= 1 and wan_with_keys is defined
 
+- name: Device Type
+  tags: 
+    - build
+  ansible.builtin.debug:
+    msg: "{{ device_type | default('') }}"
+
 - name: Generate a configuration file for each unique host network
   tags: 
     - build
@@ -139,10 +145,29 @@
   vars:
     wan_links_with_keys: "{{ wan_with_keys }}"
     current_host: "{{ item }}"
-  when: inlist_value == 1
+  when: inlist_value == 1 and ((hostvars[item].device_type | default('')) == '')
+
+- name: Generate a configuration file for each unique host Linux
+  tags: 
+    - build
+  ansible.builtin.template:
+    src: wan_gre_per_network_linux.j2
+    dest: "{{ output_folder }}/{{ item }}-network.cfg"
+    mode: "0664"
+  loop: "{{ wan_with_keys | map(attribute='connection') | flatten | map('split', ':') | map(attribute=0) | unique | list }}"
+  delegate_to: localhost
+  connection: local
+  run_once: false
+  loop_control:
+    label: "Generating config for {{ item }}"
+  vars:
+    wan_links_with_keys: "{{ wan_with_keys }}"
+    current_host: "{{ item }}"
+    local_macaddress: "{{ '52:54:00' | community.general.random_mac(seed=inventory_hostname) }}"
+  when: inlist_value == 1 and ((hostvars[item].device_type | default('')) == 'linux')
 
 - name: Remove the config if no settings network
-  tags: 
+  tags:
     - build
   ansible.builtin.file:
     path: "{{ output_folder }}/{{ inventory_hostname }}-network.cfg"
@@ -152,7 +177,7 @@
   when: inlist_value == 0
 
 - name: Generate a configuration file for each unique host namespace
-  tags: 
+  tags:
     - build
   ansible.builtin.template:
     src: wan_gre_per_namespace.j2
@@ -167,7 +192,7 @@
   vars:
     wan_links_with_keys: "{{ wan_with_keys }}"
     current_host: "{{ item }}"
-  when: inlist_value == 1
+  when: inlist_value == 1 and ((hostvars[item].device_type | default('')) == '')
 
 - name: Remove the config if no settings namespace
   tags: 

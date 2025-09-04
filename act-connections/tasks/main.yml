@@ -33,7 +33,8 @@
     ansible_httpapi_validate_certs: false
     ansible_python_interpreter: $(which python3)
     avd_data_validation_mode: error
-  when: deploy_config and network_ping_result is not failed and network_ping_result is not unreachable and not network_ping_result_host.failed
+  ## when: deploy_config and network_ping_result is not failed and network_ping_result is not unreachable and not network_ping_result_host.failed
+  when: deploy_config and network_ping_result is not failed and network_ping_result is not unreachable and ((device_type | default('')) == '')
 
 - name: Deploy Act connection configs to Devices
   tags: 
@@ -44,4 +45,15 @@
     ansible_password: "{{ lookup('env', 'LABPASSPHRASE') | default('arista') }}"
     ansible_python_interpreter: /usr/bin/python3
     ansible_become: true
-  when: deploy_config and network_ping_result is not failed and network_ping_result is not unreachable
+  when: deploy_config and network_ping_result is not failed and network_ping_result is not unreachable and ((device_type | default('')) == '')
+
+- name: Deploy Act connection configs to Devices linux 
+  tags: 
+    - deploy
+  ansible.builtin.include_tasks: deploy.yml
+  vars:
+    #ansible_user: "{{ ansible_user }}"
+    # ansible_password: "{{ lookup('env', 'LABPASSPHRASE') | default('arista') }}"
+    ansible_python_interpreter: /usr/bin/python3
+    ansible_become: true
+  when: deploy_config and network_ping_result is not failed and network_ping_result is not unreachable and ((device_type | default('')) == 'linux')
